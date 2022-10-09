@@ -7,7 +7,7 @@ Project Sekai API, Write by Java
 *   Skip tutorial
 *   Create inherit
 
-# Credicts
+# Credits
 
 *   [HTTP-Client](https://github.com/encryptorcode/http-client)
 *   [Sekai-API C#](https://github.com/cc004/SekaiApi)
