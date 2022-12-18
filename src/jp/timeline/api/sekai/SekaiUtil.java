@@ -1,4 +1,4 @@
-package jp.timeline.api.sekai;
+package jp.Timeline.utils;
 
 import io.github.encryptorcode.httpclient.HTTPRequest;
 import io.github.encryptorcode.httpclient.HTTPResponse;
@@ -14,6 +14,7 @@ public class SekaiUtil {
 	public static final String game_api = "https://production-game-api.sekai.colorfulpalette.org/api";
 	public static final String issue_api = "https://issue.sekai.colorfulpalette.org/api";
 	public static String token = null;
+	public static String cookie = null;
 
 	private static void SetupHeaders(HttpURLConnection connection) throws IllegalAccessException {
 		for (Field field : EnvironmentInfo.class.getDeclaredFields())
@@ -28,16 +29,16 @@ public class SekaiUtil {
 			connection.setRequestProperty("X-Session-Token", token);
 
 		connection.setRequestProperty("X-Request-Id", UUID.randomUUID().toString());
+
+		if (cookie != null)
+			connection.setRequestProperty("Cookie", cookie);
 	}
 
 	private static boolean AllIsZero(byte[] bytes)
 	{
-		for (byte b : bytes) {
-			if (b != 0) {
+		for (byte b : bytes)
+			if (b != 0)
 				return false;
-			}
-		}
-
 		return true;
 	}
 
@@ -65,7 +66,9 @@ public class SekaiUtil {
 					try (OutputStream os = connection.getOutputStream()) {
 						os.write(querybytes);
 					}
-				}else {
+				}
+				else
+				{
 					try (OutputStream os = connection.getOutputStream()) {
 						os.write(content.getBytes(StandardCharsets.UTF_8));
 					}
@@ -85,7 +88,6 @@ public class SekaiUtil {
 			}
 
 			connection.disconnect();
-
 			return connection;
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -95,10 +97,6 @@ public class SekaiUtil {
 	}
 
 	public static String CallApi(String apiurl, HTTPMethod method, String content) {
-		return CallApi(apiurl, method, content, null);
-	}
-
-	public static String CallApi(String apiurl, HTTPMethod method, String content, String cookie) {
 		String result = null;
 		byte[] querybytes = null;
 		try {
@@ -108,8 +106,6 @@ public class SekaiUtil {
 			connection.setUseCaches(false);
 			connection.setInstanceFollowRedirects(true);
 			SetupHeaders(connection);
-			if (cookie != null)
-				connection.setRequestProperty("Cookie", cookie);
 			connection.setRequestMethod(method.name().toUpperCase());
 			if (method != HTTPMethod.GET) {
 				try {
@@ -125,7 +121,9 @@ public class SekaiUtil {
 					try (OutputStream os = connection.getOutputStream()) {
 						os.write(querybytes);
 					}
-				}else {
+				}
+				else
+				{
 					try (OutputStream os = connection.getOutputStream()) {
 						os.write(content.getBytes(StandardCharsets.UTF_8));
 					}
@@ -134,12 +132,17 @@ public class SekaiUtil {
 
 			if (connection.getResponseCode() != 200)
 			{
-				if (connection.getResponseCode() == 403 && cookie == null)
+				if (connection.getResponseCode() == 403)
 				{
-					System.out.println("Cookie expired, refreshing... URL: " + game_api + apiurl);
-					HttpURLConnection resp = CallSekai(issue_api + "/signature", HTTPMethod.POST, null);
-					if (resp != null)
-						return CallApi(apiurl, method, content, resp.getHeaderFields().get("Set-Cookie").get(0));
+					if (cookie == null)
+					{
+						System.out.println("Cookie expired, refreshing... URL: " + game_api + apiurl);
+						HttpURLConnection resp = CallSekai(issue_api + "/signature", HTTPMethod.POST, null);
+						if (resp != null) {
+							cookie = resp.getHeaderFields().get("Set-Cookie").get(0);
+							return CallApi(apiurl, method, content);
+						}
+					}
 				}
 				throw new IOException("REQUEST ERROR! CODE: " + connection.getResponseCode() + " MESSAGE: " + connection.getResponseMessage());
 			}
@@ -203,7 +206,7 @@ public class SekaiUtil {
 
 	public static String CallUserApi(String apiurl, String uid, HTTPMethod method, String content)
 	{
-		return CallApi("/user/" + uid + apiurl, method, content, null);
+		return CallApi("/user/" + uid + apiurl, method, content);
 	}
 
 	private static void SetupHeaders(HTTPRequest connection) throws IllegalAccessException {
@@ -219,32 +222,34 @@ public class SekaiUtil {
 			connection.header("X-Session-Token", SekaiUtil.token);
 
 		connection.header("X-Request-Id", UUID.randomUUID().toString());
+
+		if (cookie != null)
+			connection.header("Cookie", cookie);
 	}
 
 	public static String CallUserApiNew(String apiurl, String uid, HTTPRequest.Method method, String content)
-	{
-		return CallUserApiNew(apiurl, uid, method, content, null);
-	}
-
-	public static String CallUserApiNew(String apiurl, String uid, HTTPRequest.Method method, String content, String cookie)
 	{
 		try
 		{
 			HTTPRequest request = new HTTPRequest(method, game_api + "/user/" + uid + apiurl);
 			SetupHeaders(request);
-			if (cookie != null)
-				request.header("Cookie", cookie);
 			request.setJsonData(content);
 			HTTPResponse response = request.getResponse();
 
 			if (response.getResponseCode() != 200)
 			{
-				if (response.getResponseCode() == 403 && cookie == null)
+				if (response.getResponseCode() == 403)
 				{
-					System.out.println("Cookie expired, refreshing... URL: " + game_api + apiurl);
-					HttpURLConnection resp = CallSekai(issue_api + "/signature", HTTPMethod.POST, null);
-					if (resp != null)
-						return CallUserApiNew(apiurl, uid, method, content, resp.getHeaderFields().get("Set-Cookie").get(0));
+					if (cookie == null)
+					{
+						System.out.println("Cookie expired, refreshing... URL: " + game_api + apiurl);
+						HttpURLConnection resp = CallSekai(issue_api + "/signature", HTTPMethod.POST, null);
+						if (resp != null)
+						{
+							cookie = resp.getHeaderFields().get("Set-Cookie").get(0);
+							return CallUserApiNew(apiurl, uid, method, content);
+						}
+					}
 				}
 				throw new IOException("REQUEST ERROR! CODE: " + response.getResponseCode() + " MESSAGE: " + response.getResponseMessage());
 			}
