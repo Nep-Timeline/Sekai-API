@@ -10,13 +10,13 @@ public class EnvironmentInfo
     public static String Content_Type = "application/octet-stream";
     public static String Accept = "application/octet-stream";
     public static String Accept_Encoding = "deflate, gzip";
-    public static String Host = "production-game-api.sekai.colorfulpalette.org";
+    //public static String Host = "production-game-api.sekai.colorfulpalette.org";
     public static String X_Unity_Version = "2020.3.32f1";
     public static String User_Agent = "UnityPlayer/" + X_Unity_Version + " (UnityWebRequest/1.0, libcurl/7.80.0-DEV)";
     public static String X_Install_Id = UUID.randomUUID().toString();
-    public static String X_App_Version = "2.3.2";
-    public static String X_Asset_Version = "2.3.0.30";
-    public static String X_Data_Version = "2.3.0.30";
+    public static String X_App_Version = "2.3.5";
+    public static String X_Asset_Version = "2.3.5.50";
+    public static String X_Data_Version = "2.3.5.50";
     //public static String X_Platform = "Android";
     //public static String X_DeviceModel = "Mi 114514 Pro 5G";
     //public static String X_OperatingSystem = "Android OS 11 / API-30";
