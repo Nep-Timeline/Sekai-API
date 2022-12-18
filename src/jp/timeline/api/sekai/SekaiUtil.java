@@ -1,20 +1,14 @@
-package jp.timeline.api.sekai;
+package jp.Timeline.utils;
 
 import io.github.encryptorcode.httpclient.HTTPRequest;
 import io.github.encryptorcode.httpclient.HTTPResponse;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.lang.reflect.Field;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 public class SekaiUtil {
 	public static final String urlroot = "https://production-game-api.sekai.colorfulpalette.org/api";
@@ -46,11 +40,10 @@ public class SekaiUtil {
 		return true;
 	}
 
-	public static String CallApi(String apiurl, HTTPMethod method, String content) {
-		String result = null;
+	public static HttpURLConnection CallSekai(String url, HTTPMethod method, String content) {
 		byte[] querybytes = null;
 		try {
-			HttpURLConnection connection = (HttpURLConnection) new URL(urlroot + apiurl).openConnection();
+			HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
 			connection.setDoInput(true);
 			connection.setDoOutput(true);
 			connection.setUseCaches(false);
@@ -76,6 +69,78 @@ public class SekaiUtil {
 						os.write(content.getBytes(StandardCharsets.UTF_8));
 					}
 				}
+			}
+
+			Map<String, List<String>> headers = connection.getHeaderFields();
+
+			String nextToken = null;
+
+			if(headers.containsKey("X-Session-Token")) {
+				nextToken = headers.get("X-Session-Token").get(0);
+			}
+
+			if (nextToken != null) {
+				token = nextToken;
+			}
+
+			connection.disconnect();
+
+			return connection;
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		return null;
+	}
+
+	public static String CallApi(String apiurl, HTTPMethod method, String content) {
+		return CallApi(apiurl, method, content, null);
+	}
+
+	public static String CallApi(String apiurl, HTTPMethod method, String content, String cookie) {
+		String result = null;
+		byte[] querybytes = null;
+		try {
+			HttpURLConnection connection = (HttpURLConnection) new URL(urlroot + apiurl).openConnection();
+			connection.setDoInput(true);
+			connection.setDoOutput(true);
+			connection.setUseCaches(false);
+			connection.setInstanceFollowRedirects(true);
+			SetupHeaders(connection);
+			if (cookie != null)
+				connection.setRequestProperty("Cookie", cookie);
+			connection.setRequestMethod(method.name().toUpperCase());
+			if (method != HTTPMethod.GET) {
+				try {
+					if (content != null)
+						querybytes = PackHelper.Pack(content);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+			connection.connect();
+			if(content != null) {
+				if(querybytes != null) {
+					try (OutputStream os = connection.getOutputStream()) {
+						os.write(querybytes);
+					}
+				}else {
+					try (OutputStream os = connection.getOutputStream()) {
+						os.write(content.getBytes(StandardCharsets.UTF_8));
+					}
+				}
+			}
+
+			if (connection.getResponseCode() != 200)
+			{
+				if (connection.getResponseCode() == 403 && cookie == null)
+				{
+					System.out.println("Cookie expired, refreshing... URL: " + urlroot + apiurl);
+					HttpURLConnection resp = CallSekai("https://issue.sekai.colorfulpalette.org/api/signature", HTTPMethod.POST, null);
+					if (resp != null)
+						return CallApi(apiurl, method, content, resp.getHeaderFields().get("Set-Cookie").get(0));
+				}
+				throw new IOException("REQUEST ERROR! CODE: " + connection.getResponseCode() + " MESSAGE: " + connection.getResponseMessage());
 			}
 
 			InputStream is = (InputStream) connection.getContent();
@@ -137,7 +202,7 @@ public class SekaiUtil {
 
 	public static String CallUserApi(String apiurl, String uid, HTTPMethod method, String content)
 	{
-		return CallApi("/user/" + uid + apiurl, method, content);
+		return CallApi("/user/" + uid + apiurl, method, content, null);
 	}
 
 	private static void SetupHeaders(HTTPRequest connection) throws IllegalAccessException {
@@ -157,15 +222,29 @@ public class SekaiUtil {
 
 	public static String CallUserApiNew(String apiurl, String uid, HTTPRequest.Method method, String content)
 	{
+		return CallUserApiNew(apiurl, uid, method, content, null);
+	}
+
+	public static String CallUserApiNew(String apiurl, String uid, HTTPRequest.Method method, String content, String cookie)
+	{
 		try
 		{
 			HTTPRequest request = new HTTPRequest(method, urlroot + "/user/" + uid + apiurl);
 			SetupHeaders(request);
+			if (cookie != null)
+				request.header("Cookie", cookie);
 			request.setJsonData(content);
 			HTTPResponse response = request.getResponse();
 
 			if (response.getResponseCode() != 200)
 			{
+				if (response.getResponseCode() == 403 && cookie == null)
+				{
+					System.out.println("Cookie expired, refreshing... URL: " + urlroot + apiurl);
+					HttpURLConnection resp = CallSekai("https://issue.sekai.colorfulpalette.org/api/signature", HTTPMethod.POST, null);
+					if (resp != null)
+						return CallUserApiNew(apiurl, uid, method, content, resp.getHeaderFields().get("Set-Cookie").get(0));
+				}
 				throw new IOException("REQUEST ERROR! CODE: " + response.getResponseCode() + " MESSAGE: " + response.getResponseMessage());
 			}
 
