@@ -1,4 +1,4 @@
-package jp.Timeline.utils;
+package jp.timeline.api.sekai;
 
 import io.github.encryptorcode.httpclient.HTTPRequest;
 import io.github.encryptorcode.httpclient.HTTPResponse;
